@@ -95,7 +95,10 @@ elif [ "$CLUSTER_CHOICE" == "2" ]; then
     minikube delete -p minikube || echo "Failed to delete Minikube cluster. It may not exist or is already deleted."
 elif [ "$CLUSTER_CHOICE" == "3" ]; then
     echo "Kind selected. Deleting Kind cluster..."
-    kind delete cluster --name klue-cluster || echo "Failed to delete Kind cluster."
+    until kind delete cluster --name klue-cluster; do
+        echo "Failed to delete Kind cluster. Retrying in 5 seconds..."
+        sleep 5
+    done
 else
     echo "Invalid option. Exiting."
     exit 1
