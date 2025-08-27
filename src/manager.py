@@ -5,7 +5,7 @@ nodeclaims, and other resources, while also handling custom logic for scaling an
 """
 
 import subprocess
-from datetime import datetime
+import time
 from pods_mapping import PodsMapping
 from collector import Collector
 from workload.manager import WorkloadManager
@@ -34,11 +34,14 @@ class Manager:
         self.workload_manager = WorkloadManager(f"{data_path}/workload_description.json", workload, speed_up_factor)
 
         self.pods_mapping = PodsMapping(karpenter)
-        self.collector = Collector(step=30, emulation_name=emulation_name)
+        self.collector = Collector(step=15, emulation_name=emulation_name)
 
         self.skip_pods_mapping = skip_pods_mapping
 
         self.speed_up_factor = speed_up_factor
+
+        self.end_time = [0]
+        self.end_time_lock = threading.Lock()
 
     def log(self, message):
         """
@@ -79,16 +82,18 @@ class Manager:
         self.infrastructure_manager.before_emulation()
 
         self.log("[INFO] Starting emulation.")
-        start = datetime.now()
+        start = int(time.time())
 
         # 1. Criar as threads para os métodos de emulação
         infra_emulation_thread = threading.Thread(
             target=self.infrastructure_manager.emulation,
-            name="InfraEmulationThread"
+            name="InfraEmulationThread",
+            args=(self.end_time_lock, self.end_time)
         )
         workload_emulation_thread = threading.Thread(
             target=self.workload_manager.emulation,
-            name="WorkloadEmulationThread"
+            name="WorkloadEmulationThread",
+            args=(self.end_time_lock, self.end_time)
         )
 
         self.log("[INFO] Starting emulation thread for InfrastructureManager.")
@@ -101,8 +106,13 @@ class Manager:
         workload_emulation_thread.join()
         self.log("[INFO] WorkloadManager emulation thread completed.")
 
-        end = datetime.now()
-        duration = int((end - start).total_seconds())
+        if self.end_time[0] == 0:
+            self.log("[ERROR] Emulation end time was not set, something went wrong.")
+            end = int(time.time())
+        else:
+            end = self.end_time[0]
+
+        duration = end - start 
         subprocess.run(["bash", "src/port-forward.sh"], check=True)
         self.collector.collect(start_time=start, end_time=end, duration=duration)
 

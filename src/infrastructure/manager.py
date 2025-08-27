@@ -74,7 +74,7 @@ class InfrastructureManager:
             self.log("[INFO] Restoring nodepools disruption time to original values.")
             self.restore_nodepools_disruption_time()
 
-    def emulation(self):
+    def emulation(self, end_time_lock, end_time):
         """
         Executes the main emulation loop based on trace data.
 
@@ -101,12 +101,17 @@ class InfrastructureManager:
         emulation_start_wall_clock_time = time.monotonic()
         self.log(f"[INFO] Emulation start time (wall clock): {emulation_start_wall_clock_time:.4f}")
 
-        for entry in trace:
+        trace_size  = len(trace)
+        self.log(f"[INFO] Trace size: {trace_size}")
+
+        for idx, entry in enumerate(trace, start = 1):
+            self.log(f"[INFO] Processing entry {idx}/{trace_size}")
+
             entry_trace_timestamp = entry["timestamp"]
 
             # Adjust the timestamp based on the speed-up factor if provided
             if self.speed_up_factor:
-                entry_trace_timestamp /= self.speed_up_factor            
+                entry_trace_timestamp /= self.speed_up_factor
 
             # 1. Calculate the target wall clock time for the START of this event
             target_event_start_wall_clock_time = emulation_start_wall_clock_time + entry_trace_timestamp
@@ -118,8 +123,15 @@ class InfrastructureManager:
             sleep_duration_needed = target_event_start_wall_clock_time - current_wall_clock_time
 
             if sleep_duration_needed > 0:
+                self.log(f"[INFO] Sleeping for {sleep_duration_needed:.4f} seconds to reach timestamp {entry_trace_timestamp}")
                 time.sleep(sleep_duration_needed)
-            
+
+            if idx == trace_size:
+                self.log("[INFO] Last entry in the trace, skipping further processing.")
+                with end_time_lock:
+                    end_time[0] = int(time.time())
+                break
+
             if self.emulation_phase == "dynamic":
                 for node in entry.get('applied_objects', []):
                     try:
