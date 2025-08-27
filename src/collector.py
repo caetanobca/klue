@@ -50,40 +50,42 @@ class Collector:
             metrics = [line.strip() for line in f]
         return metrics
 
-    def request_metrics(self, metric):
+    def request_metrics(self, metric, max_retries: int = 5, retry_delay: int = 2):
         """
-        Fetches metrics from a Prometheus server within a specified time range.
+        Fetches metrics from a Prometheus server within a specified time range, com retry e execução de comando bash.
         """
-        # end_time = int(time.time())  # Current time as end
-        # start_time = end_time - int(self.duration.total_seconds())  # Start time based on duration
-
-        end_time = self.end_time.timestamp()
-        start_time = self.start_time.timestamp()
 
         if not self.step or self.step <= 0:
             self.log(f"[ERROR] Invalid step value: {self.step}. It must be a positive integer.")
             return None
 
-        try:
-            step_duration = f"{self.step}s"
-            response = requests.get(
-                f"{self.prometheus_host}/api/v1/query_range",
-                params={
-                    "query": metric,
-                    "start": start_time,
-                    "end": end_time,
-                    "step": step_duration
-                }
-            )
+        step_duration = f"{self.step}s"
+        url = f"{self.prometheus_host}/api/v1/query_range"
+        params = {
+            "query": metric,
+            "start": self.start_time,
+            "end": self.end_time,
+            "step": step_duration
+        }
 
-            if response.status_code != 200:
-                self.log(f"[ERROR] Failed to fetch metric {metric}: {response.text}")
-                return None
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.get(url, params=params)
 
-            return response
-        except requests.RequestException as e:
-            self.log(f"[ERROR] Request exception for metric {metric}: {e}")
-            return None
+                if response.status_code == 200:
+                    return response
+                else:
+                    self.log(f"[WARNING] Attempt {attempt}: Failed to fetch metric {metric}: {response.text}")
+
+            except requests.RequestException as e:
+                self.log(f"[ERROR] Attempt {attempt}: Exception for metric {metric}: {e}")
+
+            if attempt < max_retries:
+                time.sleep(retry_delay)
+
+        self.log(f"[ERROR] All {max_retries} attempts failed for metric {metric}.")
+
+        return None
 
     def write_csv(self, output_dir, emulation_name=None):
         """
@@ -148,8 +150,7 @@ class Collector:
             5. Compresses the CSV files into a ZIP archive.
             6. Logs the completion of the zipping process.
         """
-        self.log(f"[INFO] Collecting metrics of this emulation for {duration} seconds.")
-        # self.duration = timedelta(seconds=int(duration))
+        self.log(f"[INFO] Collecting metrics of this emulation for {end_time - start_time} seconds.")
         self.start_time = start_time
         self.end_time = end_time
         self.metrics = self.read_metrics()
