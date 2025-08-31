@@ -9,6 +9,7 @@ import time
 from pods_mapping import PodsMapping
 from collector import Collector
 from workload.manager import WorkloadManager
+from infrastructure.instance_preemption import PreemptionManager
 from infrastructure.manager import InfrastructureManager
 import threading
 
@@ -22,7 +23,7 @@ class Manager:
         data_path (string): The path of the JSON with the objects that will be applied by broker.
     """
 
-    def __init__(self, data_path='/tmp', karpenter=True, infrastructure=None, workload=None, skip_pods_mapping=False, emulation_name=None, speed_up_factor=None):
+    def __init__(self, data_path='/tmp', karpenter=True, infrastructure=None, workload=None, skip_pods_mapping=False, emulation_name=None, speed_up_factor=None, use_interruption_model=False, spot_lifetime_file=None, node_interruption_interval=300, interruption_random_seed=42):
         """
         Initializes the Manager class.
         """
@@ -30,8 +31,14 @@ class Manager:
         self.workload = workload
         self.emulation_name = emulation_name
 
-        self.infrastructure_manager = InfrastructureManager(f"{data_path}/infrastructure_description.json", karpenter, infrastructure, speed_up_factor)
-        self.workload_manager = WorkloadManager(f"{data_path}/workload_description.json", workload, speed_up_factor)
+        infrastructure_event = threading.Event()
+        workload_event = threading.Event()
+
+        self.infrastructure_manager = InfrastructureManager(f"{data_path}/infrastructure_description.json", karpenter, infrastructure, infrastructure_event, speed_up_factor)
+        self.workload_manager = WorkloadManager(f"{data_path}/workload_description.json", workload, workload_event, speed_up_factor)
+
+        if use_interruption_model:
+            self.preemption_manager = PreemptionManager(spot_lifetime_file, f"{data_path}/workload_description.json",  interruptions_interval=node_interruption_interval, infrastructure_event=infrastructure_event, workload_event=workload_event, seed=interruption_random_seed)
 
         self.pods_mapping = PodsMapping(karpenter)
         self.collector = Collector(step=15, emulation_name=emulation_name)
@@ -39,9 +46,6 @@ class Manager:
         self.skip_pods_mapping = skip_pods_mapping
 
         self.speed_up_factor = speed_up_factor
-
-        self.end_time = [0]
-        self.end_time_lock = threading.Lock()
 
     def log(self, message):
         """
@@ -74,6 +78,7 @@ class Manager:
         self.log("[INFO] Executing setup of infrastructure and workload.")
         self.infrastructure_manager.setup()
         self.workload_manager.setup()
+        self.preemption_manager.setup()
 
         if not self.skip_pods_mapping:
             self.start_mapping_and_scheduler()
@@ -87,30 +92,32 @@ class Manager:
         # 1. Criar as threads para os métodos de emulação
         infra_emulation_thread = threading.Thread(
             target=self.infrastructure_manager.emulation,
-            name="InfraEmulationThread",
-            args=(self.end_time_lock, self.end_time)
+            name="InfraEmulationThread"
         )
         workload_emulation_thread = threading.Thread(
             target=self.workload_manager.emulation,
-            name="WorkloadEmulationThread",
-            args=(self.end_time_lock, self.end_time)
+            name="WorkloadEmulationThread"
+        )
+        interruption_thread = threading.Thread(
+            target=self.preemption_manager.emulation,
+            name="InterruptionThread"
         )
 
         self.log("[INFO] Starting emulation thread for InfrastructureManager.")
         infra_emulation_thread.start()
         self.log("[INFO] Starting emulation thread for WorkloadManager.")
         workload_emulation_thread.start()
+        self.log("[INFO] Starting emulation thread for PreemptionManager.")
+        interruption_thread.start()
     
         infra_emulation_thread.join()
         self.log("[INFO] InfrastructureManager emulation thread completed.")
         workload_emulation_thread.join()
         self.log("[INFO] WorkloadManager emulation thread completed.")
+        interruption_thread.join()
+        self.log("[INFO] PreemptionManager emulation thread completed.")
 
-        if self.end_time[0] == 0:
-            self.log("[ERROR] Emulation end time was not set, something went wrong.")
-            end = int(time.time())
-        else:
-            end = self.end_time[0]
+        end = int(time.time())
 
         duration = end - start 
         subprocess.run(["bash", "src/port-forward.sh"], check=True)

@@ -14,7 +14,7 @@ from tracer.tracer_cluster_autoscaler import TracerClusterAutoscaler
 from manager import Manager
 
 class Main:
-    def __init__(self, trace_path, nodepool_path, karpenter, cluster_autoscaler, tracer_skip, infrastructure, workload, skip_pods_mapping, emulation_name = None, allocation_rule_path = None, speed_up_factor = None):
+    def __init__(self, trace_path, nodepool_path, karpenter, cluster_autoscaler, tracer_skip, infrastructure, workload, skip_pods_mapping, emulation_name = None, allocation_rule_path = None, speed_up_factor = None, use_interruption_model=False, spot_lifetime_file=None, node_interruption_interval=300, interruption_random_seed=42):
         self.trace_path = trace_path
         self.nodepool_path = nodepool_path
         self.karpenter = karpenter
@@ -26,6 +26,11 @@ class Main:
         self.emulation_name = emulation_name
         self.allocation_rule_path = allocation_rule_path
         self.speed_up_factor = speed_up_factor
+        self.use_interruption_model = use_interruption_model
+        self.spot_lifetime_file = spot_lifetime_file
+        self.node_interruption_interval = node_interruption_interval
+        self.interruption_random_seed = interruption_random_seed
+
 
     def apply_nodepool(self):
         """
@@ -81,7 +86,18 @@ class Main:
         parameters and calls its run method to start the emulation.
         """
         # Executa o broker.py
-        manager = Manager(karpenter=self.karpenter, infrastructure=self.infrastructure, workload=self.workload, skip_pods_mapping = self.skip_pods_mapping, emulation_name = self.emulation_name, speed_up_factor = self.speed_up_factor )
+        manager = Manager(
+            karpenter=self.karpenter, 
+            infrastructure=self.infrastructure, 
+            workload=self.workload, 
+            skip_pods_mapping = self.skip_pods_mapping, 
+            emulation_name = self.emulation_name, 
+            speed_up_factor = self.speed_up_factor,
+            use_interruption_model=self.use_interruption_model,
+            spot_lifetime_file=self.spot_lifetime_file,
+            node_interruption_interval=self.node_interruption_interval,
+            interruption_random_seed=self.interruption_random_seed
+        )
         manager.run()
 
 def parse_arguments():
@@ -118,6 +134,19 @@ def parse_arguments():
     parser.add_argument("--speed-up", 
                        type=int,
                        help="Fator de aceleração da emulação (ex: 2, 5, 10)")
+    parser.add_argument("--use-interruption-model", 
+                       action="store_true", 
+                       help="Ativar o modelo de interrupção de instâncias spot")
+    parser.add_argument("--spot-lifetime-file", 
+                       help="Especificar o caminho do arquivo de lifetimes de instâncias spot (Opcional)")
+    parser.add_argument("--node-interruption-interval", 
+                       type=int,
+                       default=300,
+                       help="Define o intervalo de interrupção de instâncias spot em segundos (Padrão: 300)")
+    parser.add_argument("--interruption-random-seed", 
+                       type=int,
+                       default=42,
+                       help="Define a semente para a geração de números aleatórios para interrupções (Padrão: 42)")
 
     args = parser.parse_args()
     
@@ -129,6 +158,9 @@ def parse_arguments():
     
     if args.speed_up and args.speed_up <= 0:
         parser.error("O fator de aceleração deve ser um número positivo")
+
+    if args.use_interruption_model and not args.spot_lifetime_file:
+        parser.error("O caminho do arquivo de lifetimes de instâncias spot deve ser especificado quando o modelo de interrupção está ativado")
 
     return args
 
@@ -157,7 +189,11 @@ if __name__ == "__main__":
         skip_pods_mapping=args.skip_pods_mapping,
         emulation_name=args.emulation_name,
         allocation_rule_path=args.allocation_rule,
-        speed_up_factor=args.speed_up
+        speed_up_factor=args.speed_up,
+        use_interruption_model=args.use_interruption_model,
+        spot_lifetime_file=args.spot_lifetime_file,
+        node_interruption_interval=args.node_interruption_interval,
+        interruption_random_seed=args.interruption_random_seed
     )
 
     main_instance.apply_nodepool()

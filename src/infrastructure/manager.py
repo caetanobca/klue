@@ -12,7 +12,7 @@ class InfrastructureManager:
     TIME_OUT = 200
     AMOUNT_OF_REAL_NODES = 1
 
-    def __init__(self, data_path, karpenter, emulation_phase, speed_up_factor=None):
+    def __init__(self, data_path, karpenter, emulation_phase, done_job_event, speed_up_factor=None):
         """
         Initializes the Manager class.
         """
@@ -28,6 +28,8 @@ class InfrastructureManager:
 
         self.input_data_node_count = self.count_nodes_in_input_data()
         self.node_count = 0
+
+        self.done_job_event = done_job_event
 
     def log(self, message):
         """
@@ -74,7 +76,7 @@ class InfrastructureManager:
             self.log("[INFO] Restoring nodepools disruption time to original values.")
             self.restore_nodepools_disruption_time()
 
-    def emulation(self, end_time_lock, end_time):
+    def emulation(self):
         """
         Executes the main emulation loop based on trace data.
 
@@ -126,12 +128,6 @@ class InfrastructureManager:
                 self.log(f"[INFO] Sleeping for {sleep_duration_needed:.4f} seconds to reach timestamp {entry_trace_timestamp}")
                 time.sleep(sleep_duration_needed)
 
-            if idx == trace_size:
-                self.log("[INFO] Last entry in the trace, skipping further processing.")
-                with end_time_lock:
-                    end_time[0] = int(time.time())
-                break
-
             if self.emulation_phase == "dynamic":
                 for node in entry.get('applied_objects', []):
                     try:
@@ -146,6 +142,9 @@ class InfrastructureManager:
                     except Exception as e:
                         self.log(f"[ERROR] Failed to delete node {node_name}: {e}")
 
+        self.log("[INFO] Setting done_job_event to signal completion of emulation.")
+        self.done_job_event.set()
+                
         # The last timestamp in the trace does not matter (it represents the tear down phase),
         # so we can just sleep for the input step duration.
         time.sleep(15)

@@ -10,7 +10,7 @@ from util.k8s_object_applier import KubernetesObjectApplier
 
 class WorkloadManager:
     TIME_OUT = 200
-    def __init__(self, data_path, emulation_phase, speed_up_factor=None):
+    def __init__(self, data_path, emulation_phase, done_job_event, speed_up_factor=None):
         """
         Initializes the Workload Manager class.
         """
@@ -22,6 +22,8 @@ class WorkloadManager:
 
         with open(data_path, 'r', encoding="utf-8") as file:
             self.data = json.load(file)
+
+        self.done_job_event = done_job_event
 
     def log(self, message):
         """
@@ -55,7 +57,7 @@ class WorkloadManager:
     def before_emulation(self):
         pass
 
-    def emulation(self, end_time_lock, end_time):
+    def emulation(self):
         """
         Executes a trace by applying, scaling, and deleting Kubernetes objects based on the provided trace data.
         The method processes a sequence of trace entries, where each entry contains information about
@@ -96,11 +98,6 @@ class WorkloadManager:
                 self.log(f"[INFO] Sleeping for {sleep_duration_needed:.4f} seconds to reach timestamp {entry_trace_timestamp}")
                 time.sleep(sleep_duration_needed)
 
-            if idx == trace_size:
-                self.log("[INFO] Last entry in the trace, skipping further processing.")
-                with end_time_lock:
-                    end_time[0] = int(time.time())
-                break
 
             if self.emulation_phase == "dynamic":
                 # Apply workload objects
@@ -141,6 +138,9 @@ class WorkloadManager:
                         self.log(f"[INFO] Deleted {kind} {name} in namespace {namespace}")
                     except Exception as e:
                         self.log(f"[ERROR] Failed to delete {kind} {name} in namespace {namespace}: {e}")
+
+        self.log("[INFO] Setting done_job_event to signal completion of emulation.")
+        self.done_job_event.set()
 
         # The last timestamp in the trace does not matter (it represents the tear down phase),
         # so we can just sleep for 15 seconds.

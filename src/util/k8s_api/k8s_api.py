@@ -33,6 +33,9 @@ class K8SAPI:
 
     def patch_node(self, name, body, **kwargs):
         return self.v1.patch_node(name=name, body=body, **kwargs)
+    
+    def delete_node(self, name, **kwargs):
+        return self.v1.delete_node(name=name, **kwargs)
 
     # Namespaces
     def list_namespace(self, **kwargs):
