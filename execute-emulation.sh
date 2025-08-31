@@ -21,6 +21,10 @@ usage() {
     echo "  --speed-up FACTOR                         Define um fator de aceleração para a emulação (ex: 2, 5, 10)."
     echo "                                            Observação: ao utilizar este parâmetro, certifique-se de que o novo intervalo entre eventos seja superior a 30 segundos."
     echo "  --skip-pods-mapping                       Pular o mapeamento de pods e a execução do custom-scheduler"
+    echo "  --use-interruption-model                  Ativar o modelo de interrupção de instâncias spot"
+    echo "  --spot-lifetime-file PATH                 Especificar o caminho do arquivo de lifetimes de instâncias spot (Opcional)"
+    echo "  --node-interruption-interval SECONDS      Define o intervalo de interrupção de instâncias spot em segundos (Padrão: 300)"
+    echo "  --interruption-random-seed SEED           Define a semente para a geração de números aleatórios para interrupções (Padrão: 42)"
     echo "  -h, --help                                Exibir esta mensagem de ajuda"
     exit 1
 }
@@ -46,6 +50,10 @@ EMULATION_NAME=""
 ALLOCATION_RULE=""
 SPEED_UP_FACTOR=""
 SKIP_PODS_MAPPING=""
+INTERRUPTION_ENABLED="no"
+SPOT_LIFETIME_FILE=""
+NODE_INTERRUPTION_INTERVAL=300
+INTERRUPTION_RANDOM_SEED=42
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -109,6 +117,22 @@ while [[ $# -gt 0 ]]; do
         --skip-pods-mapping)
             SKIP_PODS_MAPPING="skip-pods-mapping"
             shift
+            ;;
+        --use-interruption-model)
+            INTERRUPTION_ENABLED="yes"
+            shift
+            ;;
+        --spot-lifetime-file)
+            SPOT_LIFETIME_FILE="$2"
+            shift 2
+            ;;
+        --node-interruption-interval)
+            NODE_INTERRUPTION_INTERVAL="$2"
+            shift 2
+            ;;
+        --interruption-random-seed)
+            INTERRUPTION_RANDOM_SEED="$2"
+            shift 2
             ;;
         -h|--help)
             usage
@@ -196,6 +220,17 @@ elif [[ $ENVIRONMENT == "emulation" ]]; then
     
     if [[ -n $SPEED_UP_FACTOR ]]; then
         PYTHON_CMD="$PYTHON_CMD --speed-up \"$SPEED_UP_FACTOR\""
+    fi
+
+    if [[ $INTERRUPTION_ENABLED == "yes" ]]; then
+        PYTHON_CMD="$PYTHON_CMD --use-interruption-model"
+        
+        if [[ -n $SPOT_LIFETIME_FILE ]]; then
+            PYTHON_CMD="$PYTHON_CMD --spot-lifetime-file \"$SPOT_LIFETIME_FILE\""
+        fi
+        
+        PYTHON_CMD="$PYTHON_CMD --node-interruption-interval \"$NODE_INTERRUPTION_INTERVAL\""
+        PYTHON_CMD="$PYTHON_CMD --interruption-random-seed \"$INTERRUPTION_RANDOM_SEED\""
     fi
 
     # Executar comando Python
