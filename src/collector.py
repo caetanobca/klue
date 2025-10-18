@@ -36,6 +36,9 @@ class Collector:
         """
         Logs a message with a "[COLLECTOR]" prefix.
         """
+        with open("/home/ubuntu/collector.log", "a") as log_file:
+            log_file.write(f"[COLLECTOR] {message}\n")
+
         print(f"[COLLECTOR] {message}")
 
     def read_metrics(self):
@@ -87,7 +90,7 @@ class Collector:
 
         return None
 
-    def write_csv(self, output_dir, emulation_name=None):
+    def write_csv(self, output_dir, quartil = None, emulation_name=None):
         """
         Writes metrics data to CSV files in the specified output directory.
 
@@ -109,11 +112,20 @@ class Collector:
                 self.log(f"[ERROR] Failed to decode JSON for metric {metric}")
                 continue
 
+            metric_name = results[0]["metric"].get("__name__", "")
+
+            if quartil:
+                metric_name = f"{metric_name}_{quartil}"
+
             if len(results) == 0:
                 self.log(f"[INFO] No results for metric {metric}")
+                with open(f"{output_dir}/{metric_name}.csv", "w", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    if emulation_name:
+                        writer.writerow(["name", "timestamp", "value", "emulation_name"])
+                    else:
+                        writer.writerow(["name", "timestamp", "value"])
                 continue
-
-            metric_name = results[0]["metric"].get("__name__", "")
 
             with open(f"{output_dir}/{metric_name}.csv", "w", encoding="utf-8") as f:
                 writer = csv.writer(f)
@@ -153,7 +165,6 @@ class Collector:
         self.log(f"[INFO] Collecting metrics of this emulation for {end_time - start_time} seconds.")
         self.start_time = start_time
         self.end_time = end_time
-        self.metrics = self.read_metrics()
         now = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
         if self.emulation_name:
@@ -163,11 +174,28 @@ class Collector:
         
         
         os.makedirs(output_dir, exist_ok=True)
-        self.write_csv(output_dir, self.emulation_name)
+
+        metrics = self.read_metrics()
+        self.log(f"[INFO] Metrics to be collected: {metrics}")
+        for metric in metrics:
+            self.log(f"[INFO] Metric to be collected: {metric}")
+            self.metrics = [metric]
+
+            self.log(f"[INFO] Collecting metric {metric} from {self.start_time} to {self.end_time}")
+
+            self.start_time = start_time
+            self.end_time = end_time
+            for i in range(1, 11):
+                percentil_time = start_time + (end_time - start_time) * (i * 0.1)
+                self.log(f"[INFO] Collecting {i*10}th percentil from {self.start_time} to {percentil_time}")
+                self.end_time = percentil_time
+                self.write_csv(output_dir, quartil=i, emulation_name=self.emulation_name)
+                self.start_time = percentil_time
+
 
         # Zip the CSV files
-        with zipfile.ZipFile(f"{output_dir}.zip", "w") as zip:
-            for file in glob.glob(f"{output_dir}/*.csv"):
-                zip.write(file)
+        # with zipfile.ZipFile(f"{output_dir}.zip", "w") as zip:
+        #     for file in glob.glob(f"{output_dir}/*.csv"):
+        #         zip.write(file)
 
         self.log(f"[INFO] CSV files zipped to {output_dir}.zip")

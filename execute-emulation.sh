@@ -22,7 +22,7 @@ usage() {
     echo "                                            Observação: ao utilizar este parâmetro, certifique-se de que o novo intervalo entre eventos seja superior a 30 segundos."
     echo "  --skip-pods-mapping                       Pular o mapeamento de pods e a execução do custom-scheduler"
     echo "  --use-interruption-model                  Ativar o modelo de interrupção de instâncias spot"
-    echo "  --spot-lifetime-file PATH                 Especificar o caminho do arquivo de lifetimes de instâncias spot (Opcional)"
+    echo "  --node-interruption-rate 0-1              Especificar a taxa de interrupção de instâncias spot"
     echo "  --node-interruption-interval SECONDS      Define o intervalo de interrupção de instâncias spot em segundos (Padrão: 300)"
     echo "  --interruption-random-seed SEED           Define a semente para a geração de números aleatórios para interrupções (Padrão: 42)"
     echo "  -h, --help                                Exibir esta mensagem de ajuda"
@@ -51,7 +51,7 @@ ALLOCATION_RULE=""
 SPEED_UP_FACTOR=""
 SKIP_PODS_MAPPING=""
 INTERRUPTION_ENABLED="no"
-SPOT_LIFETIME_FILE=""
+NODE_INTERRUPTION_RATE=""
 NODE_INTERRUPTION_INTERVAL=300
 INTERRUPTION_RANDOM_SEED=42
 
@@ -122,8 +122,8 @@ while [[ $# -gt 0 ]]; do
             INTERRUPTION_ENABLED="yes"
             shift
             ;;
-        --spot-lifetime-file)
-            SPOT_LIFETIME_FILE="$2"
+        --node-interruption-rate)
+            NODE_INTERRUPTION_RATE="$2"
             shift 2
             ;;
         --node-interruption-interval)
@@ -225,8 +225,8 @@ elif [[ $ENVIRONMENT == "emulation" ]]; then
     if [[ $INTERRUPTION_ENABLED == "yes" ]]; then
         PYTHON_CMD="$PYTHON_CMD --use-interruption-model"
         
-        if [[ -n $SPOT_LIFETIME_FILE ]]; then
-            PYTHON_CMD="$PYTHON_CMD --spot-lifetime-file \"$SPOT_LIFETIME_FILE\""
+        if [[ -n $NODE_INTERRUPTION_RATE ]]; then
+            PYTHON_CMD="$PYTHON_CMD --interruption-rate \"$NODE_INTERRUPTION_RATE\""
         fi
         
         PYTHON_CMD="$PYTHON_CMD --node-interruption-interval \"$NODE_INTERRUPTION_INTERVAL\""

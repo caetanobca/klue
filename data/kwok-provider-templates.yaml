@@ -19,7 +19,9 @@ data:
       kind: Node
       metadata:
         name: kind-worker-template
-        annotations: {}
+        annotations: 
+          cluster-autoscaler.kwok.nodegroup/min-count: "0"
+          cluster-autoscaler.kwok.nodegroup/max-count: "10000"
         labels:
           type: kwok
           kwok.x-k8s.io/node: fake

@@ -8,14 +8,13 @@ import time
 from util.k8s_api.k8s_api import K8SAPI
 from util.k8s_object_applier import KubernetesObjectApplier
 import numpy as np
-import pandas as pd
 
 
 class PreemptionManager:
     TIME_OUT = 200
     AMOUNT_OF_REAL_NODES = 1
 
-    def __init__(self, historical_data_path, workload_data_path,  interruptions_interval, infrastructure_event, workload_event, seed=None):
+    def __init__(self, interruption_rate, workload_data_path,  interruptions_interval, infrastructure_event, workload_event, seed=None):
         """
         Initializes the Manager class.
         """
@@ -23,7 +22,10 @@ class PreemptionManager:
         self.k8s_api = K8SAPI(timeout=self.TIME_OUT)
         self.k8s_object_applier = KubernetesObjectApplier(self.k8s_api)
 
-        self.data = pd.read_csv(historical_data_path)
+        if not (0.0 <= interruption_rate <= 1.0):
+            raise ValueError("interruption_rate deve estar em [0,1].")
+        self.p = interruption_rate
+       
         self.emulation_duration = 0
         with open(workload_data_path, 'r', encoding="utf-8") as file:
             temp_data = json.load(file)
@@ -31,6 +33,9 @@ class PreemptionManager:
             self.emulation_duration = (max(timestamps) - min(timestamps)) * 2
             print(f"Emulation duration: {self.emulation_duration}s")
             print(f"Total entries in workload: {len(temp_data['emulation'])}")
+
+        if interruptions_interval <= 0:
+            raise ValueError("interruptions_interval deve ser um número positivo.")
         self.interruptions_interval = interruptions_interval
         
         self.seed = seed if seed is not None else np.random.SeedSequence().entropy
@@ -44,64 +49,6 @@ class PreemptionManager:
         Logs a message with a "[INFRASTRUCTURE MANAGER]" prefix.
         """
         print(f"[PREEMPTION MANAGER] {message}")
-
-
-    def estimate_lambda_from_csv(self):
-        """
-        Estima λ = eventos / pessoa-tempo.
-        - status=1 => preempção confirmada (evento)
-        - status=0 => censura (conta tempo observado até 'emulation_duration')
-        """
-        lifetime_col = "lifetime"
-        status_col = "status"
-        emulation_duration = float(self.emulation_duration)
-
-        data = self.data
-
-        # limpeza mínima
-        data = data.dropna(subset=[lifetime_col, status_col]).copy()
-        data[lifetime_col] = data[lifetime_col].astype(float)
-        data[status_col] = data[status_col].astype(int)
-
-        # garantir positivos
-        data = data[data[lifetime_col] > 0]
-        if data.empty:
-            raise ValueError("Sem linhas válidas (lifetimes > 0).")
-
-        lifetimes = data[lifetime_col].to_numpy(dtype=float)
-        status_val  = data[status_col].to_numpy(dtype=int)
-        # (censura à direita no horizonte)
-        print(emulation_duration)
-        person_time = np.minimum(lifetimes, emulation_duration).sum()
-
-        # número de eventos observados
-        mask_events = (status_val == 1) & (lifetimes <= emulation_duration)
-        events = int(mask_events.sum())
-
-
-        if person_time <= 0:
-            raise ValueError("Pessoa-tempo zero ou negativa após limpeza.")
-
-        lam = events / person_time  # eventos por segundo
-        return lam
-
-
-    def prob_from_lambda(self, lam_per_sec) -> float:
-        """
-        Converte λ (1/s) para probabilidade por intervalo Δt: p = 1 - exp(-λΔt).
-        """
-
-        interruptions_interval = self.interruptions_interval
-
-        if lam_per_sec < 0 or interruptions_interval <= 0:
-            raise ValueError("Parâmetros inválidos: λ>=0 e Δt>0.")
-        return float(1.0 - np.exp(-lam_per_sec * interruptions_interval))
-
-    def setup(self):
- 
-        lam = self.estimate_lambda_from_csv()
-        self.p = self.prob_from_lambda(lam)
-        self.log(f"[INFO] Calibrado: lambda={lam:.6e}, p_interval={self.p:.6f} (Δt={self.interruptions_interval}s)")
 
 
     def sample_deletions(self, n_nodes) -> int:
@@ -118,8 +65,8 @@ class PreemptionManager:
     def emulation(self):
 
         while not (self.workload_event.is_set() and self.infrastructure_event.is_set()):
-            self.log(f"[INFO] waiting {self.interruptions_interval}s until next interruption check...")
-            time.sleep(self.interruptions_interval)
+            self.log(f"[INFO] waiting {self.interruptions_interval/2}s until next interruption check...")
+            time.sleep(self.interruptions_interval/2)
 
             nodes = self.k8s_api.list_node()
 
@@ -151,8 +98,11 @@ class PreemptionManager:
 
 
                 for node_name in nodes_to_delete:
-                    self.k8s_api.delete_node(node_name)
-                    self.log(f"[INFO] Deleted node: {node_name}")
+                    try:
+                        self.k8s_api.delete_node(node_name)
+                        self.log(f"Deleted node: {node_name}")
+                    except Exception as exc:
+                        self.log(f"failed to delete node {node_name}: {exc}")
             else:    
                 self.log("[INFO] No nodes selected for deletion in this interval.")     
       

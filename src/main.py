@@ -14,7 +14,7 @@ from tracer.tracer_cluster_autoscaler import TracerClusterAutoscaler
 from manager import Manager
 
 class Main:
-    def __init__(self, trace_path, nodepool_path, karpenter, cluster_autoscaler, tracer_skip, infrastructure, workload, skip_pods_mapping, emulation_name = None, allocation_rule_path = None, speed_up_factor = None, use_interruption_model=False, spot_lifetime_file=None, node_interruption_interval=300, interruption_random_seed=42):
+    def __init__(self, trace_path, nodepool_path, karpenter, cluster_autoscaler, tracer_skip, infrastructure, workload, skip_pods_mapping, emulation_name = None, allocation_rule_path = None, speed_up_factor = None, use_interruption_model=False, interruption_rate=None, node_interruption_interval=300, interruption_random_seed=42):
         self.trace_path = trace_path
         self.nodepool_path = nodepool_path
         self.karpenter = karpenter
@@ -27,7 +27,7 @@ class Main:
         self.allocation_rule_path = allocation_rule_path
         self.speed_up_factor = speed_up_factor
         self.use_interruption_model = use_interruption_model
-        self.spot_lifetime_file = spot_lifetime_file
+        self.interruption_rate = interruption_rate
         self.node_interruption_interval = node_interruption_interval
         self.interruption_random_seed = interruption_random_seed
 
@@ -94,7 +94,7 @@ class Main:
             emulation_name = self.emulation_name, 
             speed_up_factor = self.speed_up_factor,
             use_interruption_model=self.use_interruption_model,
-            spot_lifetime_file=self.spot_lifetime_file,
+            interruption_rate=self.interruption_rate,
             node_interruption_interval=self.node_interruption_interval,
             interruption_random_seed=self.interruption_random_seed
         )
@@ -137,8 +137,10 @@ def parse_arguments():
     parser.add_argument("--use-interruption-model", 
                        action="store_true", 
                        help="Ativar o modelo de interrupção de instâncias spot")
-    parser.add_argument("--spot-lifetime-file", 
-                       help="Especificar o caminho do arquivo de lifetimes de instâncias spot (Opcional)")
+    parser.add_argument("--interruption-rate", 
+                        type=float,
+                        default=None,
+                        help="Especificar a taxa de interrupção de instâncias spot (0-1)")
     parser.add_argument("--node-interruption-interval", 
                        type=int,
                        default=300,
@@ -159,7 +161,7 @@ def parse_arguments():
     if args.speed_up and args.speed_up <= 0:
         parser.error("O fator de aceleração deve ser um número positivo")
 
-    if args.use_interruption_model and not args.spot_lifetime_file:
+    if args.use_interruption_model and not args.interruption_rate:
         parser.error("O caminho do arquivo de lifetimes de instâncias spot deve ser especificado quando o modelo de interrupção está ativado")
 
     return args
@@ -191,7 +193,7 @@ if __name__ == "__main__":
         allocation_rule_path=args.allocation_rule,
         speed_up_factor=args.speed_up,
         use_interruption_model=args.use_interruption_model,
-        spot_lifetime_file=args.spot_lifetime_file,
+        interruption_rate=args.interruption_rate,
         node_interruption_interval=args.node_interruption_interval,
         interruption_random_seed=args.interruption_random_seed
     )

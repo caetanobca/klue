@@ -22,7 +22,7 @@ RULE_PATH=$8
     --skip-pods-mapping \
     --speed-up "$SPEED_UP_FACTOR" \
     --use-interruption-model \
-    --spot-lifetime-file "$SPOT_LIFETIME_PATH" \
+    --node-interruption-rate "$SPOT_LIFETIME_PATH" \
     --node-interruption-interval "$NODE_INTERRUPTION_INTERVAL" \
     --interruption-random-seed "$INTERRUPTION_RANDOM_SEED" \
     --allocation-rule "$RULE_PATH" 

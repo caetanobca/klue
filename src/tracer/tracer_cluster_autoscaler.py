@@ -54,7 +54,9 @@ class TracerClusterAutoscaler:
         """
         self.log("[INFO] Loading data from CSV files.")
         self.kube_pod_container_resource_requests = pd.read_csv(self.kube_pod_container_resource_requests_path)
-        self.container_cpu_usage_seconds_total = pd.read_csv(self.container_cpu_usage_seconds_total_path)
+
+        desired_columns = ['timestamp', 'node_kubernetes_io_instance_type', 'kubernetes_io_hostname', 'pod']
+        self.container_cpu_usage_seconds_total = pd.read_csv(self.container_cpu_usage_seconds_total_path, usecols=desired_columns)
         self.kube_pod_owner = pd.read_csv(self.kube_pod_owner_path)
         self.kube_pod_status_phase = pd.read_csv(self.kube_pod_status_phase_path)
         self.kube_replicaset_owner = pd.read_csv(self.kube_replicaset_owner_path)
