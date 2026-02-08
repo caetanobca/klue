@@ -37,7 +37,7 @@ class Collector:
         """
         Logs a message with a "[COLLECTOR]" prefix.
         """
-        with open("/home/ubuntu/collector.log", "a") as log_file:
+        with open("./logs//collector.log", "a") as log_file:
             log_file.write(f"[COLLECTOR] {message}\n")
 
         print(f"[COLLECTOR] {message}")
@@ -111,7 +111,7 @@ class Collector:
                 results = response.json().get("data", {}).get("result", [])
             except json.JSONDecodeError:
                 self.log(f"[ERROR] Failed to decode JSON for metric {metric}")
-                with open(f"/home/ubuntu/collector_faliures.log", "a") as f:
+                with open(f"./logs//collector_faliures.log", "a") as f:
                     f.write(f"Failed to decode JSON {metric} -- {quartil}\n")
                 continue
             
@@ -119,7 +119,7 @@ class Collector:
                 metric_name = results[0]["metric"].get("__name__", "")
             else:
                 self.log(f"[WARNING] No data found for metric {metric}")
-                with open(f"/home/ubuntu/collector_faliures.log", "a") as f:
+                with open(f"./logs//collector_faliures.log", "a") as f:
                     f.write(f"Len < 0 {metric} -- {quartil}\n")
                 continue
             

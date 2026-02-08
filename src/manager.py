@@ -88,7 +88,7 @@ class Manager:
         self.log("[INFO] Starting emulation.")
         start = int(time.time())
 
-        with open("/home/ubuntu/emulation_time.txt", "a") as f:
+        with open("./logs//emulation_time.txt", "a") as f:
             f.write(f"----- {self.emulation_name} -----\n")
             f.write(f"Start time: {start}\n")
 
@@ -122,7 +122,7 @@ class Manager:
 
         end = int(time.time())
 
-        with open("/home/ubuntu/emulation_time.txt", "a") as f:
+        with open("./logs//emulation_time.txt", "a") as f:
             f.write(f"End time: {end}\n")
             f.write(f"Duration: {end - start} seconds\n")
 
