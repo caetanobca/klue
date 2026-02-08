@@ -53,13 +53,31 @@ class TracerClusterAutoscaler:
         Logs an informational message before loading the data.
         """
         self.log("[INFO] Loading data from CSV files.")
-        self.kube_pod_container_resource_requests = pd.read_csv(self.kube_pod_container_resource_requests_path)
+        self.kube_pod_container_resource_requests = pd.read_csv(
+            self.kube_pod_container_resource_requests_path,
+            usecols=["timestamp", "pod", "namespace", "value", "resource", "node"])
 
-        desired_columns = ['timestamp', 'node_kubernetes_io_instance_type', 'kubernetes_io_hostname', 'pod']
-        self.container_cpu_usage_seconds_total = pd.read_csv(self.container_cpu_usage_seconds_total_path, usecols=desired_columns)
-        self.kube_pod_owner = pd.read_csv(self.kube_pod_owner_path)
-        self.kube_pod_status_phase = pd.read_csv(self.kube_pod_status_phase_path)
-        self.kube_replicaset_owner = pd.read_csv(self.kube_replicaset_owner_path)
+        self.container_cpu_usage_seconds_total = pd.read_csv(
+            self.container_cpu_usage_seconds_total_path, 
+            usecols=['timestamp', 'node_kubernetes_io_instance_type', 'kubernetes_io_hostname', 'pod'])
+        self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total.drop_duplicates(subset=['pod', 'timestamp'], keep='first')
+        
+        self.kube_pod_owner = pd.read_csv(
+            self.kube_pod_owner_path,
+            usecols=['pod', 'owner_name', 'owner_kind'])
+        self.kube_pod_owner = self.kube_pod_owner.drop_duplicates(subset=['pod'], keep='first')
+        
+        self.kube_pod_status_phase = pd.read_csv(
+            self.kube_pod_status_phase_path,
+            usecols=['timestamp', 'pod', 'phase', 'value'])
+        self.kube_pod_status_phase = self.kube_pod_status_phase[self.kube_pod_status_phase['value'] != 0]
+        self.kube_pod_status_phase = self.kube_pod_status_phase[['timestamp', 'pod', 'phase']]
+
+        self.kube_replicaset_owner = pd.read_csv(
+            self.kube_replicaset_owner_path,
+            usecols=['replicaset', 'owner_kind', 'owner_name'])
+        self.kube_replicaset_owner = self.kube_replicaset_owner.drop_duplicates(subset=['replicaset'], keep='first')
+
 
     def normalize_timestamps(self, dfs_list):
         """
@@ -114,54 +132,62 @@ class TracerClusterAutoscaler:
             self.kube_replicaset_owner
         ])
 
-    def select_necessary_columns(self):
-        """
-        Selects and renames essential columns, and performs initial filtering
-        on various DataFrames used in the trace generation.
-
-
-        Operations performed:
-        - On `self.container_cpu_usage_seconds_total`:
-            - Selects 'timestamp', 'node_kubernetes_io_instance_type',
-              'kubernetes_io_hostname', and 'pod'.
-            - Renames 'node_kubernetes_io_instance_type' to 'instance_type'.
-            - Renames 'kubernetes_io_hostname' to 'node'.
-            - Removes duplicate rows based on 'pod' and 'timestamp', keeping
-              the first occurrence.
-        - On `self.kube_pod_container_resource_requests`:
-            - Selects "timestamp", "pod", "namespace", "value", "resource",
-              and "node".
-        - On `self.kube_pod_owner`:
-            - Removes duplicate rows based on 'pod', keeping the first occurrence.
-            - Selects 'pod', 'owner_name', and 'owner_kind'.
-        - On `self.kube_pod_status_phase`:
-            - Filters out rows where the 'value' column (indicating phase activity) is 0.
-            - Selects 'timestamp', 'pod', and 'phase'.
-        - On `self.kube_replicaset_owner`:
-            - Removes duplicate rows based on 'replicaset', keeping the first occurrence.
-            - Selects 'replicaset', 'owner_kind', and 'owner_name'.
-        """
-
-        # Selecting only the desired final columns
-        self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total[['timestamp', 'node_kubernetes_io_instance_type', 'kubernetes_io_hostname', 'pod']]
         self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total.rename(
             columns={
                 'node_kubernetes_io_instance_type': 'instance_type',
                 'kubernetes_io_hostname': 'node'
             }
         )
-        self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total.drop_duplicates(subset=['pod', 'timestamp'], keep='first')
 
-        self.kube_pod_container_resource_requests = self.kube_pod_container_resource_requests[["timestamp", "pod", "namespace", "value", "resource", "node"]]
+    # def select_necessary_columns(self):
+    #     """
+    #     Selects and renames essential columns, and performs initial filtering
+    #     on various DataFrames used in the trace generation.
 
-        self.kube_pod_owner = self.kube_pod_owner.drop_duplicates(subset='pod', keep='first')
-        self.kube_pod_owner = self.kube_pod_owner[['pod', 'owner_name', 'owner_kind']]
 
-        self.kube_pod_status_phase = self.kube_pod_status_phase[self.kube_pod_status_phase['value'] != 0]
-        self.kube_pod_status_phase = self.kube_pod_status_phase[['timestamp', 'pod', 'phase']]
+    #     Operations performed:
+    #     - On `self.container_cpu_usage_seconds_total`:
+    #         - Selects 'timestamp', 'node_kubernetes_io_instance_type',
+    #           'kubernetes_io_hostname', and 'pod'.
+    #         - Renames 'node_kubernetes_io_instance_type' to 'instance_type'.
+    #         - Renames 'kubernetes_io_hostname' to 'node'.
+    #         - Removes duplicate rows based on 'pod' and 'timestamp', keeping
+    #           the first occurrence.
+    #     - On `self.kube_pod_container_resource_requests`:
+    #         - Selects "timestamp", "pod", "namespace", "value", "resource",
+    #           and "node".
+    #     - On `self.kube_pod_owner`:
+    #         - Removes duplicate rows based on 'pod', keeping the first occurrence.
+    #         - Selects 'pod', 'owner_name', and 'owner_kind'.
+    #     - On `self.kube_pod_status_phase`:
+    #         - Filters out rows where the 'value' column (indicating phase activity) is 0.
+    #         - Selects 'timestamp', 'pod', and 'phase'.
+    #     - On `self.kube_replicaset_owner`:
+    #         - Removes duplicate rows based on 'replicaset', keeping the first occurrence.
+    #         - Selects 'replicaset', 'owner_kind', and 'owner_name'.
+    #     """
 
-        self.kube_replicaset_owner = self.kube_replicaset_owner.drop_duplicates(subset='replicaset', keep='first')
-        self.kube_replicaset_owner = self.kube_replicaset_owner[['replicaset', 'owner_kind', 'owner_name']]
+    #     # Selecting only the desired final columns
+    #     # self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total[['timestamp', 'node_kubernetes_io_instance_type', 'kubernetes_io_hostname', 'pod']]
+    #     # self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total.rename(
+    #     #     columns={
+    #     #         'node_kubernetes_io_instance_type': 'instance_type',
+    #     #         'kubernetes_io_hostname': 'node'
+    #     #     }
+    #     # )
+    #     # self.container_cpu_usage_seconds_total = self.container_cpu_usage_seconds_total.drop_duplicates(subset=['pod', 'timestamp'], keep='first')
+
+    #     # self.kube_pod_container_resource_requests = self.kube_pod_container_resource_requests[["timestamp", "pod", "namespace", "value", "resource", "node"]]
+
+    #     # self.kube_pod_owner = self.kube_pod_owner.drop_duplicates(subset=['pod', 'namespace'], keep='first')
+    #     # self.kube_pod_owner = self.kube_pod_owner[['pod', 'owner_name', 'owner_kind']]
+
+    #     # self.kube_pod_status_phase = self.kube_pod_status_phase[self.kube_pod_status_phase['value'] != 0]
+    #     # self.kube_pod_status_phase = self.kube_pod_status_phase[['timestamp', 'pod', 'phase']]
+
+    #     # self.kube_replicaset_owner = self.kube_replicaset_owner.drop_duplicates(subset='replicaset', keep='first')
+    #     # self.kube_replicaset_owner = self.kube_replicaset_owner[['replicaset', 'owner_kind', 'owner_name']]
+    #     return
 
     def merge_container_usage_with_pods_phase(self):
         """
@@ -511,7 +537,7 @@ class TracerClusterAutoscaler:
         self.log("[INFO] Starting Tracer.")
         self.load_data()
         self.preprocess_dataframes()
-        self.select_necessary_columns()
+        # self.select_necessary_columns()
         self.merge_container_usage_with_pods_phase()
         self.merge_pods_state_with_resources()
         self.merge_pods_resources_with_pod_owner()

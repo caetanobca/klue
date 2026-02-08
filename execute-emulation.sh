@@ -25,6 +25,7 @@ usage() {
     echo "  --node-interruption-rate 0-1              Especificar a taxa de interrupção de instâncias spot"
     echo "  --node-interruption-interval SECONDS      Define o intervalo de interrupção de instâncias spot em segundos (Padrão: 300)"
     echo "  --interruption-random-seed SEED           Define a semente para a geração de números aleatórios para interrupções (Padrão: 42)"
+    echo "  --reliability-scheduler                     Ativar o scheduler de confiabilidade na emulação"
     echo "  -h, --help                                Exibir esta mensagem de ajuda"
     exit 1
 }
@@ -54,6 +55,7 @@ INTERRUPTION_ENABLED="no"
 NODE_INTERRUPTION_RATE=""
 NODE_INTERRUPTION_INTERVAL=300
 INTERRUPTION_RANDOM_SEED=42
+RELIABILITY_SCHEDULER="no-reliability-scheduler"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -134,6 +136,10 @@ while [[ $# -gt 0 ]]; do
             INTERRUPTION_RANDOM_SEED="$2"
             shift 2
             ;;
+        --reliability-scheduler)
+            RELIABILITY_SCHEDULER="reliability-scheduler-on"
+            shift
+            ;;
         -h|--help)
             usage
             ;;
@@ -175,6 +181,11 @@ if [[ $KUBERNETES_AUTOSCALER == "kubernetes-autoscaler-on" && $KARPENTER == "kar
     usage
 fi
 
+if [[ $RELIABILITY_SCHEDULER == "reliability-scheduler-on" && $KUBERNETES_AUTOSCALER != "kubernetes-autoscaler-on" ]]; then
+    echo "Erro: --reliability-scheduler só pode ser usado com --use-kubernetes-cluster-autoscaler."
+    usage
+fi
+
 # Configuração do ambiente
 if [[ $ENVIRONMENT == "development" ]]; then
     echo "Configurando ambiente de desenvolvimento..."
@@ -183,7 +194,7 @@ if [[ $ENVIRONMENT == "development" ]]; then
 elif [[ $ENVIRONMENT == "emulation" ]]; then
     echo "Configurando ambiente de emulação..."
     cd kwok-karpenter-install
-    ./setup.sh "$KARPENTER" "$KUBERNETES_AUTOSCALER" "$CLUSTER_AUTOSCALER_PROVIDER_TEMPLATE"
+    ./setup.sh "$KARPENTER" "$KUBERNETES_AUTOSCALER" "$CLUSTER_AUTOSCALER_PROVIDER_TEMPLATE" "$RELIABILITY_SCHEDULER"
     cd ..
     
     # Construir comando Python com argumentos opcionais

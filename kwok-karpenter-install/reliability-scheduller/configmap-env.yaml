@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reliability-scheduler-env
+  labels:
+    app: reliability-scheduler
+data:
+  # ============================================================================
+  # Linear Regression Coefficients for Target Spread Calculation
+  # ============================================================================
+  # The scheduler uses a logarithmic model with different coefficients based on
+  # application size (small: <=10 pods, medium: <=100 pods, large: >100 pods)
+
+  # Base coefficients (for large applications, >100 pods)
+  RELIABILITY_SCHEDULER_INTERCEPT: "9.427738e-01"
+  RELIABILITY_SCHEDULER_SPREAD_WEIGHT: "4.124402e-02"
+  RELIABILITY_SCHEDULER_HOUR_PER_FAILURE_WEIGHT: "9.989487e-04"
+  RELIABILITY_SCHEDULER_TOTAL_NODES_WEIGHT: "-3.305198e-05"
+
+  # Adjustments for medium-sized applications (10 < pods <= 100)
+  # These values are ADDED to the base coefficients
+  RELIABILITY_SCHEDULER_SPREAD_MEDIUM_APPS: "7.977684e-01"
+  RELIABILITY_SCHEDULER_INTERCEPT_MEDIUM_APPS: "-7.911023e-01"
+
+  # Adjustments for small applications (pods <= 10)
+  # These values are ADDED to the base coefficients
+  RELIABILITY_SCHEDULER_SPREAD_SMALL_APPS: "9.392624e-01"
+  RELIABILITY_SCHEDULER_INTERCEPT_SMALL_APPS: "-9.262064e-01"
+
+  # ============================================================================
+  # Prometheus Integration Settings
+  # ============================================================================
+  # URL of Prometheus service for querying hour-per-failure metrics
+  PROMETHEUS_URL: "http://prometheus-k8s.monitoring.svc:9090"
+
+  # Default hour-per-failure value when metric is not available
+  # 0.0 means the application has never failed (most optimistic)
+  # Alternative: use 8760 (1 failure per year) as conservative default
+  DEFAULT_HOUR_PER_FAILURE: "1"
+
+  # Cache TTL for Prometheus metrics
+  # Balances freshness vs Prometheus load
+  # Valid values: "1m", "5m", "10m", etc.
+  METRICS_CACHE_TTL: "5m"
+
+  # Timeout for Prometheus queries
+  # Should be low to avoid blocking scheduling decisions
+  # Valid values: "50ms", "100ms", "200ms", etc.
+  METRICS_QUERY_TIMEOUT: "100ms"
+
+---
+# ============================================================================
+# NOTES:
+# ============================================================================
+#
+# 1. Model Formula:
+#    minAvailApp = log((minAvail + ε) / (1 - minAvail + ε))
+#    interceptApp = intercept + interceptAdjustment (based on app size)
+#    spreadWeightApp = spreadWeight + spreadWeightAdjustment (based on app size)
+#    targetSpread = (minAvailApp - hpf*hpfWeight - totalNodes*nodesWeight - interceptApp) / spreadWeightApp
+#    targetSpread = clip(targetSpread, 0, 1)
+#
+# 2. App Size Categories:
+#    - Small: totalAppPods <= 10
+#      → Uses: intercept + interceptSmallApps, spreadWeight + spreadSmallApps
+#    - Medium: 10 < totalAppPods <= 100
+#      → Uses: intercept + interceptMediumApps, spreadWeight + spreadMediumApps
+#    - Large: totalAppPods > 100
+#      → Uses: intercept, spreadWeight (no adjustments)
+#
+# 3. How to update coefficients:
+#    - Edit this ConfigMap with your trained model coefficients
+#    - Apply: kubectl apply -f scheduler-env-configmap.yaml
+#    - Restart scheduler: kubectl rollout restart deployment/reliability-scheduler -n kube-scheduler-reliability
+#
+# 4. Prometheus Recording Rule Expected:
+#    Record name: app:reliability:hour_per_failure:1h
+#    Labels: {app="<app-name>"}
+#    See: deploy/integrated/prometheus-rules.yaml
+#
+# ============================================================================

@@ -161,8 +161,12 @@ def parse_arguments():
     if args.speed_up and args.speed_up <= 0:
         parser.error("O fator de aceleração deve ser um número positivo")
 
-    if args.use_interruption_model and not args.interruption_rate:
-        parser.error("O caminho do arquivo de lifetimes de instâncias spot deve ser especificado quando o modelo de interrupção está ativado")
+    if args.use_interruption_model and args.interruption_rate is None:
+        parser.error("A taxa de interrupção deve ser especificada quando o modelo de interrupção está ativado")
+    
+    if args.interruption_rate is not None:
+        if not (0.0 <= args.interruption_rate <= 1.0):
+            parser.error("A taxa de interrupção deve estar entre 0 e 1")
 
     return args
 

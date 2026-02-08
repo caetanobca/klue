@@ -31,6 +31,7 @@ class Collector:
         self.step = int(step)
         self.metrics_file = metrics_file
         self.emulation_name = emulation_name
+        self.num_files = 70
 
     def log(self, message):
         """
@@ -110,9 +111,18 @@ class Collector:
                 results = response.json().get("data", {}).get("result", [])
             except json.JSONDecodeError:
                 self.log(f"[ERROR] Failed to decode JSON for metric {metric}")
+                with open(f"/home/ubuntu/collector_faliures.log", "a") as f:
+                    f.write(f"Failed to decode JSON {metric} -- {quartil}\n")
                 continue
-
-            metric_name = results[0]["metric"].get("__name__", "")
+            
+            if len(results) > 0:
+                metric_name = results[0]["metric"].get("__name__", "")
+            else:
+                self.log(f"[WARNING] No data found for metric {metric}")
+                with open(f"/home/ubuntu/collector_faliures.log", "a") as f:
+                    f.write(f"Len < 0 {metric} -- {quartil}\n")
+                continue
+            
 
             if quartil:
                 metric_name = f"{metric_name}_{quartil}"
@@ -185,9 +195,9 @@ class Collector:
 
             self.start_time = start_time
             self.end_time = end_time
-            for i in range(1, 11):
-                percentil_time = start_time + (end_time - start_time) * (i * 0.1)
-                self.log(f"[INFO] Collecting {i*10}th percentil from {self.start_time} to {percentil_time}")
+            for i in range(1, self.num_files + 1):
+                percentil_time = start_time + (end_time - start_time) * (i / self.num_files)
+                self.log(f"[INFO] Collecting file {i}/{self.num_files} from {self.start_time} to {percentil_time}")
                 self.end_time = percentil_time
                 self.write_csv(output_dir, quartil=i, emulation_name=self.emulation_name)
                 self.start_time = percentil_time

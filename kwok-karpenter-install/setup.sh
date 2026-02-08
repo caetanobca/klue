@@ -10,6 +10,7 @@ fi
 KARPENTER="$1"
 KUBERNETES_AUTOSCALER="$2"
 CLUSTER_AUTOSCALER_PROVIDER_TEMPLATE="$3"
+RELIABILITY_SCHEDULER="$4"
 
 # Setup Prometheus and Grafana
 
@@ -49,28 +50,67 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 	echo "Instalndo o KOWK"
 	./install-kwok.sh
 
-	echo "Instalando o Kubernetes Cluster Autoscaler"
+	if [ "$RELIABILITY_SCHEDULER" = "reliability-scheduler-on" ]; then
+		echo "Configurando o Cluster Autoscaler com o Scheduler de Confiabilidade"
 
-	cd autoscaler
-	helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
-		--namespace kube-system \
-		--set cloudProvider=kwok \
-		--set image.tag="v0.1.1" \
-		--set image.repository="caetanobca/cluster-autoscaler-kwok" \
-		--set extraArgs.v="4" \
-		--set extraArgs.logtostderr="true" \
-		--set extraArgs.stderrthreshold="info" \
-		--set extraArgs.kubeconfig="/etc/kubeconfig/kwok.kubeconfig" \
-		--set serviceMonitor.enabled=false \
-		--set autoscalingGroups[0].name=dummy \
-		--set autoscalingGroups[0].minSize=0 \
-		--set autoscalingGroups[0].maxSize=5 \
-		--set extraVolumeMounts[0].name=kwok-kubeconfig \
-		--set extraVolumeMounts[0].mountPath="/etc/kubeconfig" \
-		--set extraVolumeMounts[0].readOnly=true \
-		--set extraVolumes[0].name=kwok-kubeconfig \
-		--set extraVolumes[0].configMap.name=kwok-kubeconfig
-	cd ..
+		kubectl apply -f reliability-scheduller/prometheus-rules.yaml
+		kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-scheduler-reliability
+		kubectl apply -f reliability-scheduller/rbac.yaml
+		kubectl apply -f reliability-scheduller/configmap.yaml
+		kubectl apply -f reliability-scheduller/deployment.yaml
+
+
+		kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-system
+
+		cd autoscaler
+		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
+			--namespace kube-system \
+			--set cloudProvider=kwok \
+			--set image.tag="v0.8-reliability" \
+			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
+			--set envFromConfigMap=reliability-scheduler-env \
+			--set extraArgs.v="5" \
+			--set extraArgs.logtostderr="true" \
+			--set extraArgs.stderrthreshold="info" \
+			--set extraArgs.kubeconfig="/etc/kubeconfig/kwok.kubeconfig" \
+			--set serviceMonitor.enabled=false \
+			--set autoscalingGroups[0].name=dummy \
+			--set autoscalingGroups[0].minSize=0 \
+			--set autoscalingGroups[0].maxSize=5 \
+			--set extraVolumeMounts[0].name=kwok-kubeconfig \
+			--set extraVolumeMounts[0].mountPath="/etc/kubeconfig" \
+			--set extraVolumeMounts[0].readOnly=true \
+			--set extraVolumes[0].name=kwok-kubeconfig \
+			--set extraVolumes[0].configMap.name=kwok-kubeconfig
+
+		cd ..
+		
+		kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-scheduler-reliability
+	else
+		echo "Configurando o Cluster Autoscaler sem o Scheduler de Confiabilidade"
+
+		cd autoscaler
+		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
+			--namespace kube-system \
+			--set cloudProvider=kwok \
+			--set image.tag="v0.1.1" \
+			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
+			--set extraArgs.v="4" \
+			--set extraArgs.logtostderr="true" \
+			--set extraArgs.stderrthreshold="info" \
+			--set extraArgs.kubeconfig="/etc/kubeconfig/kwok.kubeconfig" \
+			--set serviceMonitor.enabled=false \
+			--set autoscalingGroups[0].name=dummy \
+			--set autoscalingGroups[0].minSize=0 \
+			--set autoscalingGroups[0].maxSize=5 \
+			--set extraVolumeMounts[0].name=kwok-kubeconfig \
+			--set extraVolumeMounts[0].mountPath="/etc/kubeconfig" \
+			--set extraVolumeMounts[0].readOnly=true \
+			--set extraVolumes[0].name=kwok-kubeconfig \
+			--set extraVolumes[0].configMap.name=kwok-kubeconfig
+
+			cd ..
+	fi
 
 	kubectl apply -f configuration-files/kwok-provider-config.yaml -n kube-system
 	
