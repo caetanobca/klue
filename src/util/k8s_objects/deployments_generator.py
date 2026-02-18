@@ -231,8 +231,8 @@ class DeploymentsGenerator:
             reliability_config = None
             
             if rule_name and get_rule:
+                deploy_rule_spec = rule_spec.copy()
                 if rule_type == "anti_affinity":
-                    deploy_rule_spec = rule_spec.copy()
                     deploy_rule_spec['namespace'] = str(row["namespace"])
                 
                 rule_result = get_rule(deploy_rule_spec, labels)
