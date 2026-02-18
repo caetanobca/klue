@@ -32,7 +32,7 @@ class Collector:
         self.metrics_file = metrics_file
         self.emulation_name = emulation_name
         self.num_files = 70
-        self.log_path = f"./logs/collector_{emulation_name}" if emulation_name else "./logs/"
+        self.log_path = f"./logs/{emulation_name}" if emulation_name else "./logs/"
 
     def log(self, message):
         """
