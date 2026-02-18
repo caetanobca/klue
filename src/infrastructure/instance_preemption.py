@@ -64,9 +64,22 @@ class PreemptionManager:
 
     def emulation(self):
 
+        # Sleep in small chunks so the thread can react quickly when
+        # `workload_event` and `infrastructure_event` are set.
         while not (self.workload_event.is_set() and self.infrastructure_event.is_set()):
-            self.log(f"[INFO] waiting {self.interruptions_interval/2}s until next interruption check...")
-            time.sleep(self.interruptions_interval/2)
+            total_wait = self.interruptions_interval / 2
+            self.log(f"[INFO] waiting up to {total_wait}s until next interruption check (sleeping in 1s steps)...")
+
+            waited = 0
+            sleep_chunk = 1
+            while waited < total_wait:
+                if self.workload_event.is_set() and self.infrastructure_event.is_set():
+                    break
+                time.sleep(sleep_chunk)
+                waited += sleep_chunk
+
+            if self.workload_event.is_set() and self.infrastructure_event.is_set():
+                break
 
             nodes = self.k8s_api.list_node()
 
