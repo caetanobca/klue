@@ -140,7 +140,7 @@ class Manager:
 
         duration = end - start 
         subprocess.run(["bash", "src/port-forward.sh"], check=True)
-        self.collector.collect(start_time=start, end_time=end, duration=duration, log_path=log_path)
+        self.collector.collect(start_time=start, end_time=end, duration=duration)
 
         self.log("[INFO] Emulation completed. Tearing down infrastructure, workload and temp files.")
         self.infrastructure_manager.tear_down()
