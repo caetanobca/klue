@@ -232,9 +232,10 @@ class DeploymentsGenerator:
             
             if rule_name and get_rule:
                 if rule_type == "anti_affinity":
-                    rule_spec['namespace'] = str(row["namespace"])
+                    deploy_rule_spec = rule_spec.copy()
+                    deploy_rule_spec['namespace'] = str(row["namespace"])
                 
-                rule_result = get_rule(rule_spec, labels)
+                rule_result = get_rule(deploy_rule_spec, labels)
                 
                 if rule_name == "affinity":
                     extra_affinity = rule_result

@@ -12,6 +12,7 @@ from workload.manager import WorkloadManager
 from infrastructure.instance_preemption import PreemptionManager
 from infrastructure.manager import InfrastructureManager
 import threading
+import os 
 
 class Manager:
     """
@@ -37,6 +38,7 @@ class Manager:
         self.infrastructure_manager = InfrastructureManager(f"{data_path}/infrastructure_description.json", karpenter, infrastructure, infrastructure_event, speed_up_factor)
         self.workload_manager = WorkloadManager(f"{data_path}/workload_description.json", workload, workload_event, speed_up_factor)
 
+        self.use_interruption_model = use_interruption_model
         if use_interruption_model:
             self.preemption_manager = PreemptionManager(interruption_rate, f"{data_path}/workload_description.json",  interruptions_interval=node_interruption_interval, infrastructure_event=infrastructure_event, workload_event=workload_event, seed=interruption_random_seed)
 
@@ -88,7 +90,11 @@ class Manager:
         self.log("[INFO] Starting emulation.")
         start = int(time.time())
 
-        with open("./logs//emulation_time.txt", "a") as f:
+        log_path = f"./logs/{self.emulation_name}/emulation_time.log" if self.emulation_name else "./logs/emulation_time.log"
+
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+        with open(log_path, "a") as f:
             f.write(f"----- {self.emulation_name} -----\n")
             f.write(f"Start time: {start}\n")
 
@@ -101,34 +107,40 @@ class Manager:
             target=self.workload_manager.emulation,
             name="WorkloadEmulationThread"
         )
-        interruption_thread = threading.Thread(
-            target=self.preemption_manager.emulation,
-            name="InterruptionThread"
-        )
 
+        interruption_thread = None
+        if self.use_interruption_model:
+            interruption_thread = threading.Thread(
+                target=self.preemption_manager.emulation,
+                name="InterruptionThread"
+            )
+            
         self.log("[INFO] Starting emulation thread for InfrastructureManager.")
         infra_emulation_thread.start()
         self.log("[INFO] Starting emulation thread for WorkloadManager.")
         workload_emulation_thread.start()
-        self.log("[INFO] Starting emulation thread for PreemptionManager.")
-        interruption_thread.start()
+        if interruption_thread is not None:
+            self.log("[INFO] Starting emulation thread for PreemptionManager.")
+            interruption_thread.start()
     
         infra_emulation_thread.join()
         self.log("[INFO] InfrastructureManager emulation thread completed.")
         workload_emulation_thread.join()
         self.log("[INFO] WorkloadManager emulation thread completed.")
-        interruption_thread.join()
-        self.log("[INFO] PreemptionManager emulation thread completed.")
+
+        if interruption_thread is not None:
+            interruption_thread.join()
+            self.log("[INFO] PreemptionManager emulation thread completed.")
 
         end = int(time.time())
 
-        with open("./logs//emulation_time.txt", "a") as f:
+        with open(log_path, "a") as f:
             f.write(f"End time: {end}\n")
             f.write(f"Duration: {end - start} seconds\n")
 
         duration = end - start 
         subprocess.run(["bash", "src/port-forward.sh"], check=True)
-        self.collector.collect(start_time=start, end_time=end, duration=duration)
+        self.collector.collect(start_time=start, end_time=end, duration=duration, log_path=log_path)
 
         self.log("[INFO] Emulation completed. Tearing down infrastructure, workload and temp files.")
         self.infrastructure_manager.tear_down()

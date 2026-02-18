@@ -32,12 +32,13 @@ class Collector:
         self.metrics_file = metrics_file
         self.emulation_name = emulation_name
         self.num_files = 70
+        self.log_path = f"./logs/collector_{emulation_name}" if emulation_name else "./logs/"
 
     def log(self, message):
         """
         Logs a message with a "[COLLECTOR]" prefix.
         """
-        with open("./logs//collector.log", "a") as log_file:
+        with open(f"{self.log_path}/collector.log", "a") as log_file:
             log_file.write(f"[COLLECTOR] {message}\n")
 
         print(f"[COLLECTOR] {message}")
@@ -111,7 +112,7 @@ class Collector:
                 results = response.json().get("data", {}).get("result", [])
             except json.JSONDecodeError:
                 self.log(f"[ERROR] Failed to decode JSON for metric {metric}")
-                with open(f"./logs//collector_faliures.log", "a") as f:
+                with open(f"{self.log_path}/collector_failures.log", "a") as f:
                     f.write(f"Failed to decode JSON {metric} -- {quartil}\n")
                 continue
             
@@ -119,7 +120,7 @@ class Collector:
                 metric_name = results[0]["metric"].get("__name__", "")
             else:
                 self.log(f"[WARNING] No data found for metric {metric}")
-                with open(f"./logs//collector_faliures.log", "a") as f:
+                with open(f"{self.log_path}/collector_failures.log", "a") as f:
                     f.write(f"Len < 0 {metric} -- {quartil}\n")
                 continue
             

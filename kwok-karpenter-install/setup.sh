@@ -22,6 +22,7 @@ kubectl wait \
 	--all CustomResourceDefinition \
 	--namespace=monitoring
 kubectl apply -f kube-prometheus/manifests/
+kubectl patch prometheus k8s -n monitoring --type merge -p '{"spec":{"retention":"15d"}}'
 
 docker login
 
