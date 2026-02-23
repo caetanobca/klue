@@ -95,7 +95,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v0.9" \
+			--set image.tag="v0.1.1" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set extraArgs.v="4" \
 			--set extraArgs.logtostderr="true" \

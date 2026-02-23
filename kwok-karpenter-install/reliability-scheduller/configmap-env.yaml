@@ -12,20 +12,15 @@ data:
   # application size (small: <=10 pods, medium: <=100 pods, large: >100 pods)
 
   # Base coefficients (for large applications, >100 pods)
-  RELIABILITY_SCHEDULER_INTERCEPT: "9.427738e-01"
-  RELIABILITY_SCHEDULER_SPREAD_WEIGHT: "4.124402e-02"
-  RELIABILITY_SCHEDULER_HOUR_PER_FAILURE_WEIGHT: "9.989487e-04"
-  RELIABILITY_SCHEDULER_TOTAL_NODES_WEIGHT: "-3.305198e-05"
-
-  # Adjustments for medium-sized applications (10 < pods <= 100)
-  # These values are ADDED to the base coefficients
-  RELIABILITY_SCHEDULER_SPREAD_MEDIUM_APPS: "7.977684e-01"
-  RELIABILITY_SCHEDULER_INTERCEPT_MEDIUM_APPS: "-7.911023e-01"
+  RELIABILITY_SCHEDULER_INTERCEPT: "8.375686067e-01"
+  RELIABILITY_SCHEDULER_SPREAD_WEIGHT: "8.48895005e-02"
+  RELIABILITY_SCHEDULER_HOUR_PER_FAILURE_WEIGHT: "2.504775e-04"
+  RELIABILITY_SCHEDULER_TOTAL_NODES_WEIGHT: "-1.327682e-04"
 
   # Adjustments for small applications (pods <= 10)
   # These values are ADDED to the base coefficients
-  RELIABILITY_SCHEDULER_SPREAD_SMALL_APPS: "9.392624e-01"
-  RELIABILITY_SCHEDULER_INTERCEPT_SMALL_APPS: "-9.262064e-01"
+  RELIABILITY_SCHEDULER_SPREAD_SMALL_APPS: "8.785721327e-01"
+  RELIABILITY_SCHEDULER_INTERCEPT_SMALL_APPS: "-7.857895411e-01"
 
   # ============================================================================
   # Prometheus Integration Settings
