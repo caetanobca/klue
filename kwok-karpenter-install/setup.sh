@@ -23,6 +23,7 @@ kubectl wait \
 	--namespace=monitoring
 kubectl apply -f kube-prometheus/manifests/
 kubectl patch prometheus k8s -n monitoring --type merge -p '{"spec":{"retention":"15d"}}'
+kubectl patch deployment kube-state-metrics -n monitoring --type merge -p '{"spec":{"template":{"spec":{"containers":[{"name":"kube-state-metrics","resources":{"limits":{"cpu":"500m","memory":"2Gi"},"requests":{"cpu":"50m","memory":"512Mi"}}}]}}}}'
 
 docker login
 
@@ -67,7 +68,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v0.8-reliability" \
+			--set image.tag="v0.9-reliability" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set envFromConfigMap=reliability-scheduler-env \
 			--set extraArgs.v="5" \
@@ -94,7 +95,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v0.1.1" \
+			--set image.tag="v0.9" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set extraArgs.v="4" \
 			--set extraArgs.logtostderr="true" \

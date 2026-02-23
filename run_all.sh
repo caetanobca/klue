@@ -1,4 +1,4 @@
-DATA_PATH="/home/ubuntu/emulation_inputs/seven_days_input_filter"
+DATA_PATH="/home/ubuntu/seven_days_input_filter"
 CLUSTER_AUTOSCALER_PROVIDER_TEMPLATE="/home/ubuntu/klue/data/kwok-provider-templates.yaml"
 EMULATION_PREFIX="seven-days"
 SPEED_UP_FACTOR=2
