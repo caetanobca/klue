@@ -153,3 +153,5 @@ fi
 while [[ $(kubectl get pod prometheus-k8s-0 -n monitoring -o jsonpath='{.status.phase}') != "Running" ]]; do
   sleep 5
 done
+
+kubectl patch networkpolicy prometheus-k8s -n monitoring --type=json -p '[{"op":"add","path":"/spec/ingress/-","value":{"ports":[{"port":9090,"protocol":"TCP"}]}}]'
