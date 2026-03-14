@@ -205,5 +205,6 @@ class WorkloadManager:
         excluded_namespaces = ["kube-system", "monitoring", "local-path-storage", "kube-scheduler-reliability"]
 
         field_selector = "status.phase=Running" if os.getenv("FILTER_RUNNING_PODS") else None
+        self.log(f"[INFO] Fild selecto {field_selector} used.")
         pods = self.k8s_api.list_pod_for_all_namespaces(field_selector=field_selector)
         return sum(1 for pod in pods.items if pod.metadata.namespace not in excluded_namespaces)
