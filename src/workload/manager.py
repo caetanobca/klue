@@ -4,6 +4,7 @@ This module defines the WorkloadManager class, which serves as a base class for 
 
 import json
 import time
+import os
 from kubernetes import client
 from util.k8s_api.k8s_api import K8SAPI
 from util.k8s_object_applier import KubernetesObjectApplier
@@ -202,5 +203,7 @@ class WorkloadManager:
         `excluded_namespaces` list. It then returns the total count of the remaining pods.
         """
         excluded_namespaces = ["kube-system", "monitoring", "local-path-storage", "kube-scheduler-reliability"]
-        pods = self.k8s_api.list_pod_for_all_namespaces()
+
+        field_selector = "status.phase=Running" if os.getenv("FILTER_RUNNING_PODS") else None
+        pods = self.k8s_api.list_pod_for_all_namespaces(field_selector=field_selector)
         return sum(1 for pod in pods.items if pod.metadata.namespace not in excluded_namespaces)
