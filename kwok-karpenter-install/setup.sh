@@ -11,7 +11,9 @@ KARPENTER="$1"
 KUBERNETES_AUTOSCALER="$2"
 CLUSTER_AUTOSCALER_PROVIDER_TEMPLATE="$3"
 RELIABILITY_SCHEDULER="$4"
+
 CA_EXPANDER="${CA_EXPANDER:-least-waste}"
+echo "CA_EXPANDER: $CA_EXPANDER"
 # Setup Prometheus and Grafana
 
 kubectl create namespace monitoring
