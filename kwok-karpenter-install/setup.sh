@@ -11,7 +11,7 @@ KARPENTER="$1"
 KUBERNETES_AUTOSCALER="$2"
 CLUSTER_AUTOSCALER_PROVIDER_TEMPLATE="$3"
 RELIABILITY_SCHEDULER="$4"
-
+CA_EXPANDER="${CA_EXPANDER:-least-waste}"
 # Setup Prometheus and Grafana
 
 kubectl create namespace monitoring
@@ -68,7 +68,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v0.9-reliability" \
+			--set image.tag="v1.0-reliability" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set envFromConfigMap=reliability-scheduler-env \
 			--set extraArgs.v="5" \
@@ -83,7 +83,8 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 			--set extraVolumeMounts[0].mountPath="/etc/kubeconfig" \
 			--set extraVolumeMounts[0].readOnly=true \
 			--set extraVolumes[0].name=kwok-kubeconfig \
-			--set extraVolumes[0].configMap.name=kwok-kubeconfig
+			--set extraVolumes[0].configMap.name=kwok-kubeconfig \
+			--set extraArgs.expander="$CA_EXPANDER"
 
 		cd ..
 		
@@ -95,7 +96,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v0.1.1" \
+			--set image.tag="v1.0-reliability" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set extraArgs.v="4" \
 			--set extraArgs.logtostderr="true" \
@@ -109,7 +110,8 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 			--set extraVolumeMounts[0].mountPath="/etc/kubeconfig" \
 			--set extraVolumeMounts[0].readOnly=true \
 			--set extraVolumes[0].name=kwok-kubeconfig \
-			--set extraVolumes[0].configMap.name=kwok-kubeconfig
+			--set extraVolumes[0].configMap.name=kwok-kubeconfig \
+			--set extraArgs.expander="$CA_EXPANDER"
 
 			cd ..
 	fi
