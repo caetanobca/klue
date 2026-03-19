@@ -9,3 +9,4 @@ kube_deployment_status_replicas
 kube_deployment_status_replicas_unavailable
 kube_pod_status_phase
 kube_pod_status_reason
+kubelet_node_name
