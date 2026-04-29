@@ -1,4 +1,4 @@
-from kubernetes import client
+from kubernetes import client, watch
 from util.k8s_api.k8s_api import K8SAPI
 
 class KubernetesObjectApplier:
@@ -13,6 +13,18 @@ class KubernetesObjectApplier:
         Logs a message with a "[KUBERNETES APPLIER]" prefix.
         """
         print(f"[KUBERNETES APPLIER] {message}")
+
+    def wait_deployment_ready(self, name: str, namespace: str):
+        w = watch.Watch()
+        for event in w.stream(
+            self.k8s_api.list_namespaced_pod,
+            namespace=namespace,
+            label_selector=f"app={name}"
+        ):
+            pod = event["object"]
+            if pod.status.phase == "Running":
+                w.stop()
+                return
 
     def apply_deployment(self, obj, namespace, name):
         """

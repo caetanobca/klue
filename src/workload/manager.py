@@ -31,6 +31,23 @@ class WorkloadManager:
         Logs a message with a "[WORKLOAD MANAGER]" prefix.
         """
         print(f"[WORKLOAD MANAGER] {message}")
+    
+    def parse_memory_mi(self, mem_str):
+        """Converte string de memória para MiB como float."""
+        if mem_str.endswith("Mi"):
+            return float(mem_str[:-2])
+        elif mem_str.endswith("Gi"):
+            return float(mem_str[:-2]) * 1024
+        elif mem_str.endswith("Ki"):
+            return float(mem_str[:-2]) / 1024
+        return float(mem_str)  # assume bytes
+
+    def get_deployment_memory(self, deployment):
+        containers = deployment["spec"]["template"]["spec"]["containers"]
+        return sum(
+            self.parse_memory_mi(c["resources"]["requests"]["memory"])
+            for c in containers
+        )    
 
     def before_setup(self):
         pass
@@ -48,10 +65,22 @@ class WorkloadManager:
         """
         setup = self.data['setup']
 
-        for namespace, pods in setup.items():
+        # Primeiro cria todos os namespaces
+        for namespace in setup:
             self.create_namespace_if_not_exists(namespace)
-            for pod in pods:
-                self.k8s_object_applier.apply_object(pod)
+
+        # Coleta todos os deployments de todos os namespaces, ordena por memória
+        all_deployments = [
+            deployment
+            for deployments in setup.values()
+            for deployment in deployments
+        ]
+        all_deployments.sort(key=self.get_deployment_memory, reverse=True)
+
+        # Cria em ordem decrescente de memória
+        for deployment in all_deployments:
+            self.k8s_object_applier.apply_object(deployment)
+            self.k8s_object_applier.wait_deployment_ready(deployment["metadata"]["name"], deployment["metadata"]["namespace"])
 
         self.wait_pods_ready()
 
