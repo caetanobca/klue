@@ -21,6 +21,9 @@ class K8SAPI:
     def log(self, message):
         print(f"[K8SAPI] {message}")
 
+    def list_namespaced_pod(self, namespace, **kwargs):
+        return self.v1.list_namespaced_pod(namespace=namespace, **kwargs)
+
     # Nodes
     def create_node(self, body, **kwargs):
         return self.v1.create_node(body=body, **kwargs)
