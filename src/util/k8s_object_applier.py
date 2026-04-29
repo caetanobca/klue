@@ -22,7 +22,7 @@ class KubernetesObjectApplier:
             label_selector=f"app={name}"
         ):
             pod = event["object"]
-            if pod.status.phase == "Running":
+            if pod["status"]["phase"] == "Running":
                 w.stop()
                 return
 
