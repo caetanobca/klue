@@ -19,10 +19,12 @@ class KubernetesObjectApplier:
         for event in w.stream(
             self.k8s_api.list_namespaced_pod,
             namespace=namespace,
-            label_selector=f"app={name}"
+            field_selector=f"metadata.name={name}"
         ):
-            pod = event["object"]
-            if pod["status"]["phase"] == "Running":
+            deployment = event["object"]
+            spec_replicas = deployment.spec.replicas or 1
+            ready_replicas = deployment.status.ready_replicas or 0
+            if ready_replicas >= spec_replicas:
                 w.stop()
                 return
 
