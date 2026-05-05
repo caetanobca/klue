@@ -74,12 +74,17 @@ class Manager:
         """
         self.log("[INFO] Starting Broker.")
         self.log("[INFO] Preparing to start emulation.")
+
+        setup_start = int(time.time())
+        
         self.infrastructure_manager.before_setup()
         self.workload_manager.before_setup()
 
         self.log("[INFO] Executing setup of infrastructure and workload.")
         self.infrastructure_manager.setup()
         self.workload_manager.setup()
+
+        setup_end = int(time.time())
 
         if not self.skip_pods_mapping:
             self.start_mapping_and_scheduler()
@@ -141,6 +146,8 @@ class Manager:
         duration = end - start 
         subprocess.run(["bash", "src/port-forward.sh"], check=True)
         self.collector.collect(start_time=start, end_time=end, duration=duration)
+
+        Collector(step=15, emulation_name=f"setup_{emulation_name}").collect(start_time=setup_start, end_time=setup_end, duration=(setup_end - setup_start))
 
         self.log("[INFO] Emulation completed. Tearing down infrastructure, workload and temp files.")
         self.infrastructure_manager.tear_down()
