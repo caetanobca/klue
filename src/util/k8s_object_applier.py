@@ -15,16 +15,23 @@ class KubernetesObjectApplier:
         print(f"[KUBERNETES APPLIER] {message}")
 
     def wait_deployment_ready(self, name: str, namespace: str):
+        apps_v1 = client.AppsV1Api()
+        
+        # Checa estado atual antes de abrir o watch
+        deployment = apps_v1.read_namespaced_deployment(name=name, namespace=namespace)
+        spec_replicas = deployment.spec.replicas or 1
+        if (deployment.status.ready_replicas or 0) >= spec_replicas:
+            return
+    
         w = watch.Watch()
         for event in w.stream(
-            self.k8s_api.list_namespaced_pod,
+            apps_v1.list_namespaced_deployment,
             namespace=namespace,
             field_selector=f"metadata.name={name}"
         ):
             deployment = event["object"]
             spec_replicas = deployment.spec.replicas or 1
-            ready_replicas = deployment.status.ready_replicas or 0
-            if ready_replicas >= spec_replicas:
+            if (deployment.status.ready_replicas or 0) >= spec_replicas:
                 w.stop()
                 return
 
