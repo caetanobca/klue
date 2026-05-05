@@ -75,7 +75,7 @@ class WorkloadManager:
             for deployments in setup.values()
             for deployment in deployments
         ]
-        all_deployments.sort(key=self.get_deployment_memory, reverse=True)
+        all_deployments.sort(key=lambda d: (-self.get_deployment_memory(d), d.["metadata"]["name"]))
 
         # Cria em ordem decrescente de memória
         for deployment in all_deployments:
