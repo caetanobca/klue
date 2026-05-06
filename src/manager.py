@@ -147,8 +147,6 @@ class Manager:
         subprocess.run(["bash", "src/port-forward.sh"], check=True)
         self.collector.collect(start_time=start, end_time=end, duration=duration)
 
-        Collector(step=15, emulation_name=f"setup_{emulation_name}").collect(start_time=setup_start, end_time=setup_end, duration=(setup_end - setup_start))
-
         self.log("[INFO] Emulation completed. Tearing down infrastructure, workload and temp files.")
         self.infrastructure_manager.tear_down()
         self.workload_manager.tear_down()
