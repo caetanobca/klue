@@ -70,7 +70,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v1.0-reliability" \
+			--set image.tag="v1.0-reliability-linear" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set envFromConfigMap=reliability-scheduler-env \
 			--set extraArgs.v="5" \
@@ -98,7 +98,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
 			--namespace kube-system \
 			--set cloudProvider=kwok \
-			--set image.tag="v1.0-reliability" \
+			--set image.tag="v1.0-reliability-linear" \
 			--set image.repository="caetanobca/cluster-autoscaler-kwok" \
 			--set extraArgs.v="4" \
 			--set extraArgs.logtostderr="true" \
