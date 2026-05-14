@@ -22,7 +22,7 @@ spec:
 
       containers:
       - name: scheduler
-        image: caetanobca/reliability_schedule:v0.9   # Clean version without ProvisioningRequest
+        image: caetanobca/reliability_schedule:v0.9-linear   # Clean version without ProvisioningRequest
         imagePullPolicy: Always
 
         command:
