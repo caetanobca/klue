@@ -104,7 +104,7 @@ class DeploymentsGenerator:
         elif not self.cluster_autoscaler:
             return "custom-scheduler"
         else:
-            return None
+            return "reliability-scheduler"
 
     def _build_pod_metadata(self, labels, rule_type, reliability_config=None):
         """
