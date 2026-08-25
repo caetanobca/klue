@@ -89,7 +89,7 @@ metadata:
   labels:
     type: kwok
     kwok-nodegroup: 64vcpu-512gb-group
-	kubernetes.io/hostname: kwok-node-$i
+    kubernetes.io/hostname: kwok-node-$i
 status:
   capacity:
     cpu: "64"
