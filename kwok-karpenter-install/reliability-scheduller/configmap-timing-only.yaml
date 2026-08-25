@@ -24,7 +24,6 @@ data:
               - name: InterPodAffinity
               - name: VolumeZone
               - name: NodeAffinity
-              - name: ReliabilityScheduler
 
           filter:
             enabled:
@@ -43,7 +42,6 @@ data:
               - name: VolumeZone
               - name: PodTopologySpread
               - name: InterPodAffinity
-              - name: ReliabilityScheduler
 
           score:
             enabled:
@@ -61,22 +59,8 @@ data:
                 weight: 2
               - name: TaintToleration
                 weight: 1
-              - name: ReliabilityScheduler
-                weight: 10
 
           permit:
             enabled:
               - name: VolumeBinding
               - name: TimingPlugin        # logs total cycle duration, always allows
-
-        pluginConfig:
-          - name: ReliabilityScheduler
-            args:
-              apiVersion: kubescheduler.config.k8s.io/v1
-              kind: ReliabilitySchedulerArgs
-              intercept: 0.0
-              spreadWeight: 0.0
-              hourPerFailureWeight: 0.0
-              totalNodesWeight: 0.0
-              spreadSmallApps: 0.0
-              interceptSmallApps: 0.0
