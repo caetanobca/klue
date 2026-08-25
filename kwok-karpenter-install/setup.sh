@@ -84,9 +84,10 @@ apiVersion: v1
 kind: Node
 metadata:
   name: kwok-node-$i
+  annotations:
+    kwok.x-k8s.io/node: fake
   labels:
     type: kwok
-    kwok.x-k8s.io/node: fake
     kwok-nodegroup: 64vcpu-512gb-group
 status:
   capacity:
