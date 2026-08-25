@@ -66,7 +66,6 @@ data:
 
           permit:
             enabled:
-              - name: VolumeBinding
               - name: TimingPlugin        # logs total cycle duration, always allows
 
         pluginConfig:
