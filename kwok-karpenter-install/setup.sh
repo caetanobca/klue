@@ -51,18 +51,20 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 		exit 1
 	fi
 
-	echo "Instalndo o KOWK"
+	echo "Instalando o KWOK"
 	./install-kwok.sh
+
+	# Always deploy the scheduler (TimingPlugin runs in all scenarios)
+	kubectl create namespace kube-scheduler-reliability --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -f reliability-scheduller/rbac.yaml
+	kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-scheduler-reliability
 
 	if [ "$RELIABILITY_SCHEDULER" = "reliability-scheduler-on" ]; then
 		echo "Configurando o Cluster Autoscaler com o Scheduler de Confiabilidade"
 
 		kubectl apply -f reliability-scheduller/prometheus-rules.yaml
-		kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-scheduler-reliability
-		kubectl apply -f reliability-scheduller/rbac.yaml
-		kubectl apply -f reliability-scheduller/configmap.yaml
+		kubectl apply -f reliability-scheduller/configmap.yaml          # with RS + TimingPlugin
 		kubectl apply -f reliability-scheduller/deployment.yaml
-
 
 		kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-system
 
@@ -89,10 +91,13 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 			--set extraArgs.expander="$CA_EXPANDER"
 
 		cd ..
-		
 		kubectl apply -f reliability-scheduller/configmap-env.yaml -n kube-scheduler-reliability
+
 	else
 		echo "Configurando o Cluster Autoscaler sem o Scheduler de Confiabilidade"
+
+		kubectl apply -f reliability-scheduller/configmap-timing-only.yaml  # without RS, with TimingPlugin
+		kubectl apply -f reliability-scheduller/deployment.yaml
 
 		cd autoscaler
 		helm upgrade --install autoscaler-kwok charts/cluster-autoscaler \
@@ -115,7 +120,7 @@ elif [ "$KUBERNETES_AUTOSCALER" = "kubernetes-autoscaler-on" ]; then
 			--set extraVolumes[0].configMap.name=kwok-kubeconfig \
 			--set extraArgs.expander="$CA_EXPANDER"
 
-			cd ..
+		cd ..
 	fi
 
 	kubectl apply -f configuration-files/kwok-provider-config.yaml -n kube-system
